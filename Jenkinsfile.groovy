@@ -1,0 +1,57 @@
+// Pipeline to build a Maven project
+
+
+        pipeline {
+
+                agent {
+                        label "linux"
+                    }
+        
+        		options
+        		{
+        			timeout(time: 30, unit: 'MINUTES')
+        			buildDiscarder(logRotator(numToKeepStr: '5'))
+        		}
+
+        		parameters {
+        			string(name: 'SOURCES_URL', defaultValue: 'https://github.com/houda921/java-web-app.git', description: 'Github repository source of the application.')
+        			choice(name: 'BRANCH_NAME', choices: ['artifactory','main'], description: 'The name of the branch to use'
+        		}
+
+        		stages {
+
+        			stage('checkout') {
+
+        				steps {
+
+        					checkout([$class: 'GitSCM', 
+                            branches: [[name: "*/${params.BRANCH_NAME}"]], 
+                            userRemoteConfigs:[[credentialsId:  '', url: "${params.SOURCES_URL}"]]
+                 
+                       ])
+        				} // steps
+
+        			} // stage
+
+	        		stage ('Build maven') {
+
+	        			steps {
+
+	        				script {
+
+	        					sh 'mvn clean package'
+	        				} // script
+	        			} //steps
+
+	        			post
+	        				{
+	        					success {
+                                echo "Now archiving artifact"
+	        					archiveArtifacts artifacts: '**/target/*.jar', fingerprint: true
+                                } //success
+	        				}
+	        		} //stage      				
+
+
+        		} // stages
+        }
